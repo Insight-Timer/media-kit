@@ -59,3 +59,12 @@ class PipSetPlaying extends PipEvent {
 
   final bool playing;
 }
+
+/// Emitted when the user taps the PiP window's fast-forward / rewind
+/// controls. The embedder should seek the underlying player by
+/// [seconds] (positive = forward, negative = rewind).
+class PipSkipBy extends PipEvent {
+  const PipSkipBy({required this.seconds});
+
+  final double seconds;
+}

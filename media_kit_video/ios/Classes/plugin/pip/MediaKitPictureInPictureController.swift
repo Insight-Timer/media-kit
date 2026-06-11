@@ -28,6 +28,11 @@
     private var firstFrameEnqueued: Bool = false
     private var startAttempts: Int = 0
     private var didRestoreInterface: Bool = false
+    // FLTR-20042 — playback delegate state pushed from Dart via setMetadata.
+    // Without these the time range falls back to ±∞ which iOS renders as
+    // "LIVE" with stop button + greyed-out skip controls.
+    private var contentDurationMs: Int64 = 0
+    private var contentPositionMs: Int64 = 0
 
     init(
       hostView: UIView,
@@ -257,7 +262,22 @@
     func pictureInPictureControllerTimeRangeForPlayback(
       _ pipController: AVPictureInPictureController
     ) -> CMTimeRange {
-      return CMTimeRange(start: .negativeInfinity, duration: .positiveInfinity)
+      // FLTR-20042 — return a real range for VOD so the PiP UI shows
+      // pause (not stop) + enabled skip controls + correct progress bar.
+      // Falls back to ±∞ (live-stream mode) when duration is unknown.
+      guard contentDurationMs > 0 else {
+        return CMTimeRange(start: .negativeInfinity, duration: .positiveInfinity)
+      }
+      // Recipe from Apple's AVKit docs: anchor start at host clock minus
+      // current position so the system can extrapolate position between
+      // metadata pushes; this keeps the progress bar moving smoothly
+      // without a 60 Hz update from Dart.
+      let now = CMClockGetTime(CMClockGetHostTimeClock())
+      let positionSeconds = Double(contentPositionMs) / 1000.0
+      let positionTime = CMTime(seconds: positionSeconds, preferredTimescale: 1000)
+      let start = CMTimeSubtract(now, positionTime)
+      let duration = CMTime(value: contentDurationMs, timescale: 1000)
+      return CMTimeRange(start: start, duration: duration)
     }
 
     func pictureInPictureControllerIsPlaybackPaused(
@@ -277,7 +297,26 @@
       skipByInterval skipInterval: CMTime,
       completion completionHandler: @escaping () -> Void
     ) {
+      // FLTR-20042 — forward to Dart so the embedder can seek the player.
+      // Without this the FF/RW buttons are no-ops even when enabled.
+      let seconds = CMTimeGetSeconds(skipInterval)
+      eventCallback(["event": "skipByInterval", "seconds": seconds])
       completionHandler()
+    }
+  }
+
+  // FLTR-20042 — push playback metadata from Dart so the AVKit playback
+  // delegate can return a real time range + pause state. See setMetadata
+  // method-channel handler in MediaKitPictureInPicturePlugin.
+  @available(iOS 15.0, *)
+  extension MediaKitPictureInPictureController {
+    func setMetadata(durationMs: Int64?, positionMs: Int64?, isPlaying: Bool?) {
+      if let d = durationMs { contentDurationMs = d }
+      if let p = positionMs { contentPositionMs = p }
+      if let playing = isPlaying { isPlayingState = playing }
+      // Nudge AVKit to re-query the delegate methods (otherwise stale
+      // state can be cached for up to a second after metadata changes).
+      pipController?.invalidatePlaybackState()
     }
   }
 #endif

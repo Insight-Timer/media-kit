@@ -82,6 +82,24 @@
           controller.setAutoEnter(enabled)
         }
         result(nil)
+      case "setMetadata":
+        // FLTR-20042 — push duration/position/playing from Dart so the
+        // playback delegate can return a real CMTimeRange (not the
+        // hardcoded ±∞ "live stream" range from the original PR #1410).
+        // All fields are optional; missing keys keep the prior value.
+        guard let args = call.arguments as? [String: Any] else {
+          result(FlutterError(code: "INVALID_ARGS", message: nil, details: nil))
+          return
+        }
+        if #available(iOS 15.0, *),
+          let controller = controllerBox as? MediaKitPictureInPictureController
+        {
+          let dur = (args["durationMs"] as? NSNumber)?.int64Value
+          let pos = (args["positionMs"] as? NSNumber)?.int64Value
+          let playing = args["isPlaying"] as? Bool
+          controller.setMetadata(durationMs: dur, positionMs: pos, isPlaying: playing)
+        }
+        result(nil)
       default:
         result(FlutterMethodNotImplemented)
       }

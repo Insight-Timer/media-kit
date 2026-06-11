@@ -88,6 +88,26 @@ class PictureInPictureIOS implements PictureInPictureController {
   }
 
   @override
+  Future<void> setMetadata({
+    Duration? duration,
+    Duration? position,
+    bool? isPlaying,
+  }) async {
+    try {
+      await _method.invokeMethod<void>(
+        'setMetadata',
+        <String, dynamic>{
+          if (duration != null) 'durationMs': duration.inMilliseconds,
+          if (position != null) 'positionMs': position.inMilliseconds,
+          if (isPlaying != null) 'isPlaying': isPlaying,
+        },
+      );
+    } on MissingPluginException {
+      // no-op
+    }
+  }
+
+  @override
   Stream<PipEvent> get events => _eventStream ??=
       _events.receiveBroadcastStream().map(_mapEvent).asBroadcastStream();
 
@@ -111,6 +131,9 @@ class PictureInPictureIOS implements PictureInPictureController {
         return PipFailed(raw['reason']?.toString() ?? 'unknown');
       case 'setPlaying':
         return PipSetPlaying(playing: raw['playing'] == true);
+      case 'skipByInterval':
+        final seconds = (raw['seconds'] as num?)?.toDouble() ?? 0.0;
+        return PipSkipBy(seconds: seconds);
       default:
         return PipFailed('unknown_event:$name');
     }

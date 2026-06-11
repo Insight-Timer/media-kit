@@ -66,6 +66,20 @@ abstract class PictureInPictureController {
   /// session is attached.
   Future<void> setAutoEnter({required bool enabled});
 
+  /// Pushes playback metadata used by the platform's PiP UI to render
+  /// pause-vs-stop, progress bar, and skip controls. Without this the
+  /// system falls back to "live stream" UI (stop button, no progress,
+  /// greyed-out FF/RW). Pass any combination of fields — missing fields
+  /// keep the previously-pushed value.
+  ///
+  /// Currently a no-op on Android (system PiP doesn't use a delegate
+  /// for these) and on the no-op platform.
+  Future<void> setMetadata({
+    Duration? duration,
+    Duration? position,
+    bool? isPlaying,
+  });
+
   /// Broadcast stream of Picture-in-Picture lifecycle and playback control
   /// events.
   Stream<PipEvent> get events;

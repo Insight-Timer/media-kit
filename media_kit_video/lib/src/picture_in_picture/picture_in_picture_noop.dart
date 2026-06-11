@@ -34,5 +34,12 @@ class PictureInPictureNoop implements PictureInPictureController {
   Future<void> setAutoEnter({required bool enabled}) async {}
 
   @override
+  Future<void> setMetadata({
+    Duration? duration,
+    Duration? position,
+    bool? isPlaying,
+  }) async {}
+
+  @override
   Stream<PipEvent> get events => const Stream.empty();
 }

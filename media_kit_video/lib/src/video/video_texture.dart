@@ -391,18 +391,49 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
     if (!await pipController.isSupported()) {
       return;
     }
+    final player = widget.controller.player;
     _pipEventSubscription = pipController.events.listen((event) {
       widget.onPipEvent?.call(event);
       if (event is PipSetPlaying) {
         if (event.playing) {
-          widget.controller.player.play();
+          player.play();
         } else {
-          widget.controller.player.pause();
+          player.pause();
         }
+      } else if (event is PipSkipBy) {
+        // FLTR-20042 — wire FF/RW from the PiP UI to player.seek so the
+        // skip controls aren't no-ops. Clamp to [0, duration] so iOS
+        // doesn't get a negative position back via setMetadata.
+        final cur = player.state.position;
+        final dur = player.state.duration;
+        final target = cur + Duration(milliseconds: (event.seconds * 1000).round());
+        final clamped = target < Duration.zero
+            ? Duration.zero
+            : (dur > Duration.zero && target > dur ? dur : target);
+        player.seek(clamped);
       } else if (event is PipClosed) {
-        widget.controller.player.pause();
+        player.pause();
       }
     });
+    // FLTR-20042 — push duration/position/playing so the iOS PiP delegate
+    // can return a real CMTimeRange (pause button + functional progress
+    // bar + enabled skip controls). Without these calls the system falls
+    // back to live-stream UI (stop button, ±∞ range, "LIVE" overlay).
+    _subscriptions.add(
+      player.stream.duration.listen((d) {
+        pipController.setMetadata(duration: d);
+      }),
+    );
+    _subscriptions.add(
+      player.stream.position.listen((p) {
+        pipController.setMetadata(position: p);
+      }),
+    );
+    _subscriptions.add(
+      player.stream.playing.listen((p) {
+        pipController.setMetadata(isPlaying: p);
+      }),
+    );
     _maybeAttachPictureInPicture();
   }
 

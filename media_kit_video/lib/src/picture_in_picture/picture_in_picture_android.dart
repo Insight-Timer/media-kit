@@ -93,6 +93,17 @@ class PictureInPictureAndroid implements PictureInPictureController {
   }
 
   @override
+  Future<void> setMetadata({
+    Duration? duration,
+    Duration? position,
+    bool? isPlaying,
+  }) async {
+    // Android's system PiP doesn't use a playback delegate — pause/skip
+    // controls live entirely on the framework side via
+    // PictureInPictureParams.setActions. No-op here.
+  }
+
+  @override
   Stream<PipEvent> get events => _eventStream ??=
       _events.receiveBroadcastStream().map(_mapEvent).asBroadcastStream();
 
