@@ -35,7 +35,13 @@ Pod::Spec.new do |s|
     framework_search_paths_iphoneos        = sprintf('$(PROJECT_DIR)/../.symlinks/plugins/%s/ios/Frameworks/.symlinks/mpv/ios', mku.libs_package)
     framework_search_paths_iphonesimulator = sprintf('$(PROJECT_DIR)/../.symlinks/plugins/%s/ios/Frameworks/.symlinks/mpv/ios-simulator', mku.libs_package)
 
-    s.source_files        = 'media_kit_video/Sources/media_kit_video/plugin/**/*.swift', 'Headers/**/*.h'
+    # PR #1410 (PiP cherry-pick): the new MediaKitPictureInPicturePlugin
+    # + MediaKitPictureInPictureController Swift files live under
+    # Classes/plugin/ instead of the existing
+    # media_kit_video/Sources/media_kit_video/plugin/ path. The PR forgot
+    # to add this glob — without it the iOS build fails with
+    # "Cannot find type 'MediaKitPictureInPicturePlugin' in scope".
+    s.source_files        = 'media_kit_video/Sources/media_kit_video/plugin/**/*.swift', 'Classes/plugin/**/*.swift', 'Headers/**/*.h'
     s.pod_target_xcconfig = {
       'DEFINES_MODULE'                               => 'YES',
       'GCC_WARN_INHIBIT_ALL_WARNINGS'                => 'YES',
