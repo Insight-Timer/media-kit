@@ -461,6 +461,16 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         startImmediately: config.startImmediately,
       );
       _pipAttached = true;
+      // FLTR-20042 — seed the platform delegate with the current player
+      // state. media_kit's streams are forward-only, so if duration was
+      // already known before _initPictureInPicture subscribed, the iOS
+      // controller would never learn it and stay stuck in live-stream
+      // mode (±∞ range, "LIVE" overlay, stop button).
+      await pipController.setMetadata(
+        duration: player.state.duration,
+        position: player.state.position,
+        isPlaying: player.state.playing,
+      );
     } finally {
       _pipAttachInFlight = false;
     }
