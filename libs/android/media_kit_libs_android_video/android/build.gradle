@@ -58,10 +58,10 @@ task downloadDependencies(type: Exec) {
 
         // Download all *.jar dependencies & verify their MD5 checksums.
         def filesToDownload = [
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/vnext/default-arm64-v8a.jar", "md5": "fab87db5ad3e494df632a3410ca1647a", "destination": file("$buildDir/vnext/default-arm64-v8a.jar")],
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/vnext/default-armeabi-v7a.jar", "md5": "f9a4ad207dee4246477f07d36f8b177c", "destination": file("$buildDir/vnext/default-armeabi-v7a.jar")],
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/vnext/default-x86_64.jar", "md5": "26609e5d90df21f5f2e3e0442651fe86", "destination": file("$buildDir/vnext/default-x86_64.jar")],
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/vnext/default-x86.jar", "md5": "b85ed19e6eba9ef569413eb4b07c322f", "destination": file("$buildDir/vnext/default-x86.jar")]
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.1/default-arm64-v8a.jar", "md5": "fab87db5ad3e494df632a3410ca1647a", "destination": file("$buildDir/v1.1.11-it.1/default-arm64-v8a.jar")],
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.1/default-armeabi-v7a.jar", "md5": "f9a4ad207dee4246477f07d36f8b177c", "destination": file("$buildDir/v1.1.11-it.1/default-armeabi-v7a.jar")],
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.1/default-x86_64.jar", "md5": "26609e5d90df21f5f2e3e0442651fe86", "destination": file("$buildDir/v1.1.11-it.1/default-x86_64.jar")],
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.1/default-x86.jar", "md5": "b85ed19e6eba9ef569413eb4b07c322f", "destination": file("$buildDir/v1.1.11-it.1/default-x86.jar")]
         ]
 
         filesToDownload.each { fileInfo ->
