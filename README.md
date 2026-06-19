@@ -1,3 +1,22 @@
+
+## Insight-Timer fork conventions
+
+This is the Insight-Timer fork of [media-kit/media-kit](https://github.com/media-kit/media-kit). Two long-lived branches:
+
+- **`master`** *(default)*: Insight-Timer's integration branch. PR-protected. The IT app pins against this branch (or specific commits on it).
+- **`upstream`**: tracks upstream's default branch (mostly read-only on our side). Periodically merged into `master` to pull fresh upstream work.
+
+Workflow for pulling upstream changes:
+
+```sh
+git fetch origin upstream
+git checkout master
+git merge upstream
+# resolve conflicts, open a PR back into master
+```
+
+Background: see [FLTR-20042](https://insight-timer.atlassian.net/browse/FLTR-20042).
+
 # [package:media_kit](https://github.com/media-kit/media-kit)
 
 #### A cross-platform video player & audio player for Flutter & Dart.
