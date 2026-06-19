@@ -3,7 +3,11 @@
 # Run `pod lib lint media_kit_libs_ios_video.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
-  system("make")
+  # FLTR-20042: pin cwd to the podspec's own dir. Without this, recent
+  # CocoaPods (1.16.x) invokes `system()` from the pod-install workspace,
+  # not the podspec dir, so `make` can't find the Makefile and the
+  # download is silently skipped -> empty Frameworks/ -> link errors.
+  system("cd #{__dir__} && make")
 
   s.name             = 'media_kit_libs_ios_video'
   s.version          = '1.0.4'
