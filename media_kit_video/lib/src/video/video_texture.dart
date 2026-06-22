@@ -401,7 +401,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
           player.pause();
         }
       } else if (event is PipSkipBy) {
-        // FLTR-20042 — wire FF/RW from the PiP UI to player.seek so the
+        // Wire FF/RW from the PiP UI to player.seek so the
         // skip controls aren't no-ops. Clamp to [0, duration] so iOS
         // doesn't get a negative position back via setMetadata.
         final cur = player.state.position;
@@ -415,7 +415,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         player.pause();
       }
     });
-    // FLTR-20042 — push duration/position/playing so the iOS PiP delegate
+    // Push duration/position/playing so the iOS PiP delegate
     // can return a real CMTimeRange (pause button + functional progress
     // bar + enabled skip controls). Without these calls the system falls
     // back to live-stream UI (stop button, ±∞ range, "LIVE" overlay).
@@ -446,11 +446,14 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
     final height = player.state.height ?? 0;
     if (width <= 0 || height <= 0) return;
 
-    final pipController = widget.controller.pictureInPicture;
-    if (!await pipController.isSupported()) return;
-
+    // Claim the in-flight flag synchronously before any await,
+    // so concurrent triggers (width + height stream listeners) can't both
+    // race past the guard and call start() twice.
     _pipAttachInFlight = true;
     try {
+      final pipController = widget.controller.pictureInPicture;
+      if (!await pipController.isSupported()) return;
+
       final handle = await player.handle;
       final size =
           config.preferredSize ?? Size(width.toDouble(), height.toDouble());
@@ -461,7 +464,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         startImmediately: config.startImmediately,
       );
       _pipAttached = true;
-      // FLTR-20042 — seed the platform delegate with the current player
+      // Seed the platform delegate with the current player
       // state. media_kit's streams are forward-only, so if duration was
       // already known before _initPictureInPicture subscribed, the iOS
       // controller would never learn it and stay stuck in live-stream

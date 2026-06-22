@@ -15,8 +15,12 @@
     private let hostView: UIView
     private let outputManager: VideoOutputManager
     private let eventCallback: EventCallback
-    private let displayLayer: AVSampleBufferDisplayLayer
+    private var displayLayer: AVSampleBufferDisplayLayer
     private var pipController: AVPictureInPictureController?
+    // Cached so we can rebuild the AVPictureInPictureController
+    // after each session ends (the SBDL goes stale and the next auto-enter
+    // renders a black window otherwise).
+    private var cachedAutoEnter: Bool = false
     private let enqueueQueue = DispatchQueue(
       label: "com.alexmercerind.media_kit_video.pip.enqueue",
       qos: .userInteractive
@@ -28,11 +32,16 @@
     private var firstFrameEnqueued: Bool = false
     private var startAttempts: Int = 0
     private var didRestoreInterface: Bool = false
-    // FLTR-20042 — playback delegate state pushed from Dart via setMetadata.
+    // Playback delegate state pushed from Dart via setMetadata.
     // Without these the time range falls back to ±∞ which iOS renders as
     // "LIVE" with stop button + greyed-out skip controls.
     private var contentDurationMs: Int64 = 0
     private var contentPositionMs: Int64 = 0
+    // Deferred-rebuild flag. When PiP ends while the app is backgrounded,
+    // recreating the SBDL immediately produces a .failed layer (no GPU/Metal
+    // access in background). Instead, set this flag and rebuild on the next
+    // appDidBecomeActive when the rendering pipeline is alive.
+    private var pendingRebuild: Bool = false
 
     init(
       hostView: UIView,
@@ -46,11 +55,7 @@
       self.displayLayer = AVSampleBufferDisplayLayer()
       super.init()
 
-      displayLayer.videoGravity = .resizeAspect
-      displayLayer.frame = CGRect(x: 0, y: 0, width: 2, height: 2)
-      displayLayer.isOpaque = false
-      displayLayer.backgroundColor = UIColor.clear.cgColor
-      hostView.layer.insertSublayer(displayLayer, at: 0)
+      installDisplayLayer()
 
       NotificationCenter.default.addObserver(
         self,
@@ -66,6 +71,11 @@
     }
 
     @objc private func appDidBecomeActive() {
+      if pendingRebuild {
+        pendingRebuild = false
+        rebuildForNextSession()
+      }
+
       guard let controller = pipController,
         controller.isPictureInPictureActive
       else { return }
@@ -85,15 +95,9 @@
       startImmediately: Bool
     ) -> Bool {
       self.handle = handle
+      self.cachedAutoEnter = autoEnter
 
-      let contentSource = AVPictureInPictureController.ContentSource(
-        sampleBufferDisplayLayer: displayLayer,
-        playbackDelegate: self
-      )
-      let controller = AVPictureInPictureController(contentSource: contentSource)
-      controller.delegate = self
-      controller.canStartPictureInPictureAutomaticallyFromInline = autoEnter
-      self.pipController = controller
+      buildPipController(autoEnter: autoEnter)
 
       outputManager.setOnFrameRendered(handle: handle) { [weak self] pixelBuffer in
         self?.enqueue(pixelBuffer: pixelBuffer)
@@ -103,6 +107,44 @@
       self.firstFrameEnqueued = false
       self.startAttempts = 0
       return true
+    }
+
+    private func installDisplayLayer() {
+      displayLayer.videoGravity = .resizeAspect
+      displayLayer.frame = CGRect(x: 0, y: 0, width: 2, height: 2)
+      displayLayer.isOpaque = false
+      displayLayer.backgroundColor = UIColor.clear.cgColor
+      hostView.layer.insertSublayer(displayLayer, at: 0)
+    }
+
+    private func buildPipController(autoEnter: Bool) {
+      let contentSource = AVPictureInPictureController.ContentSource(
+        sampleBufferDisplayLayer: displayLayer,
+        playbackDelegate: self
+      )
+      let controller = AVPictureInPictureController(contentSource: contentSource)
+      controller.delegate = self
+      controller.canStartPictureInPictureAutomaticallyFromInline = autoEnter
+      self.pipController = controller
+    }
+
+    /// After a PiP session ends (user closes or restores), the
+    /// AVSampleBufferDisplayLayer is left in a state where iOS's next auto-
+    /// enter renders a black window while audio keeps playing. Recreate the
+    /// SBDL and AVPictureInPictureController so subsequent sessions render.
+    private func rebuildForNextSession() {
+      guard let handle = handle else { return }
+      outputManager.setOnFrameRendered(handle: handle, nil)
+
+      displayLayer.flushAndRemoveImage()
+      displayLayer.removeFromSuperlayer()
+      displayLayer = AVSampleBufferDisplayLayer()
+      installDisplayLayer()
+      buildPipController(autoEnter: cachedAutoEnter)
+
+      outputManager.setOnFrameRendered(handle: handle) { [weak self] pixelBuffer in
+        self?.enqueue(pixelBuffer: pixelBuffer)
+      }
     }
 
     private func attemptStart() {
@@ -130,6 +172,7 @@
     }
 
     func setAutoEnter(_ enabled: Bool) {
+      cachedAutoEnter = enabled
       pipController?.canStartPictureInPictureAutomaticallyFromInline = enabled
     }
 
@@ -147,6 +190,12 @@
       let retained = pixelBuffer
       enqueueQueue.async { [weak self] in
         guard let self = self else { return }
+        // If the SBDL has entered .failed (e.g., created in background,
+        // decoder error), flush() resets the rendering state so the next
+        // sample can populate the layer cleanly.
+        if self.displayLayer.status == .failed {
+          self.displayLayer.flush()
+        }
         guard self.displayLayer.isReadyForMoreMediaData else { return }
         guard let sample = self.makeSampleBuffer(from: retained) else { return }
         self.displayLayer.enqueue(sample)
@@ -236,6 +285,15 @@
         eventCallback(["event": "closed"])
       }
       didRestoreInterface = false
+
+      // Rebuilding the SBDL in background produces a .failed layer (no GPU
+      // access). Defer to appDidBecomeActive when active; run inline only if
+      // we're already active (restore path).
+      if UIApplication.shared.applicationState == .active {
+        rebuildForNextSession()
+      } else {
+        pendingRebuild = true
+      }
     }
 
     func pictureInPictureController(
@@ -262,7 +320,7 @@
     func pictureInPictureControllerTimeRangeForPlayback(
       _ pipController: AVPictureInPictureController
     ) -> CMTimeRange {
-      // FLTR-20042 — return a real range for VOD so the PiP UI shows
+      // Return a real range for VOD so the PiP UI shows
       // pause (not stop) + enabled skip controls + correct progress bar.
       // Falls back to ±∞ (live-stream mode) when duration is unknown.
       guard contentDurationMs > 0 else {
@@ -297,7 +355,7 @@
       skipByInterval skipInterval: CMTime,
       completion completionHandler: @escaping () -> Void
     ) {
-      // FLTR-20042 — forward to Dart so the embedder can seek the player.
+      // Forward to Dart so the embedder can seek the player.
       // Without this the FF/RW buttons are no-ops even when enabled.
       let seconds = CMTimeGetSeconds(skipInterval)
       eventCallback(["event": "skipByInterval", "seconds": seconds])
@@ -305,7 +363,7 @@
     }
   }
 
-  // FLTR-20042 — push playback metadata from Dart so the AVKit playback
+  // Push playback metadata from Dart so the AVKit playback
   // delegate can return a real time range + pause state. See setMetadata
   // method-channel handler in MediaKitPictureInPicturePlugin.
   @available(iOS 15.0, *)
