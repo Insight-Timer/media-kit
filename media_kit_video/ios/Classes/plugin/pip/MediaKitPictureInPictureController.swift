@@ -111,7 +111,15 @@
 
     private func installDisplayLayer() {
       displayLayer.videoGravity = .resizeAspect
-      displayLayer.frame = CGRect(x: 0, y: 0, width: 2, height: 2)
+      // Park the SBDL at 1×1 in the host's center. AVKit reads this layer's
+      // frame as the PiP exit-animation target; the center makes the
+      // animation collapse inward rather than zip off to the top-left
+      // corner. Keeping the rect at 1×1 means AVKit doesn't decorate the
+      // layer with overlay sublayers (which it does when the SBDL is sized
+      // to a "real" viewing rect — those overlays leak into the parent
+      // layer's sublayer list and survive the PiP session, polluting it).
+      let center = CGPoint(x: hostView.bounds.midX, y: hostView.bounds.midY)
+      displayLayer.frame = CGRect(x: center.x, y: center.y, width: 1, height: 1)
       displayLayer.isOpaque = false
       displayLayer.backgroundColor = UIColor.clear.cgColor
       hostView.layer.insertSublayer(displayLayer, at: 0)
