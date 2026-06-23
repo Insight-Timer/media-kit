@@ -82,6 +82,19 @@
           controller.setAutoEnter(enabled)
         }
         result(nil)
+      case "setRequiresLinearPlayback":
+        guard let args = call.arguments as? [String: Any],
+          let required = args["required"] as? Bool
+        else {
+          result(FlutterError(code: "INVALID_ARGS", message: nil, details: nil))
+          return
+        }
+        if #available(iOS 15.0, *),
+          let controller = controllerBox as? MediaKitPictureInPictureController
+        {
+          controller.setRequiresLinearPlayback(required)
+        }
+        result(nil)
       case "setMetadata":
         // FLTR-20042 — push duration/position/playing from Dart so the
         // playback delegate can return a real CMTimeRange (not the

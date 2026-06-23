@@ -88,6 +88,18 @@ class PictureInPictureIOS implements PictureInPictureController {
   }
 
   @override
+  Future<void> setRequiresLinearPlayback({required bool required}) async {
+    try {
+      await _method.invokeMethod<void>(
+        'setRequiresLinearPlayback',
+        <String, dynamic>{'required': required},
+      );
+    } on MissingPluginException {
+      // no-op
+    }
+  }
+
+  @override
   Future<void> setMetadata({
     Duration? duration,
     Duration? position,

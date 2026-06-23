@@ -34,6 +34,9 @@ class PictureInPictureNoop implements PictureInPictureController {
   Future<void> setAutoEnter({required bool enabled}) async {}
 
   @override
+  Future<void> setRequiresLinearPlayback({required bool required}) async {}
+
+  @override
   Future<void> setMetadata({
     Duration? duration,
     Duration? position,

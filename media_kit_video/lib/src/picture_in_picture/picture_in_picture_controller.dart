@@ -66,6 +66,14 @@ abstract class PictureInPictureController {
   /// session is attached.
   Future<void> setAutoEnter({required bool enabled});
 
+  /// Toggles linear-playback mode in the PiP UI. When `true`, AVKit hides
+  /// the scrubber and 15s skip buttons in the PiP overlay — use to gate
+  /// seek for non-entitled users so they can't bypass an in-app paywall.
+  ///
+  /// iOS-only; no-op on Android (system PiP doesn't expose seek controls
+  /// to gate) and on the no-op platform.
+  Future<void> setRequiresLinearPlayback({required bool required});
+
   /// Pushes playback metadata used by the platform's PiP UI to render
   /// pause-vs-stop, progress bar, and skip controls. Without this the
   /// system falls back to "live stream" UI (stop button, no progress,
