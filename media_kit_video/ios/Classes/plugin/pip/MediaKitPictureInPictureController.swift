@@ -21,6 +21,10 @@
     // after each session ends (the SBDL goes stale and the next auto-enter
     // renders a black window otherwise).
     private var cachedAutoEnter: Bool = false
+    // Cached so a rebuilt AVPictureInPictureController carries the same
+    // linear-playback gate (used to hide AVKit's scrubber + 15s skip in
+    // the PiP overlay for non-entitled users).
+    private var cachedRequiresLinearPlayback: Bool = false
     private let enqueueQueue = DispatchQueue(
       label: "com.alexmercerind.media_kit_video.pip.enqueue",
       qos: .userInteractive
@@ -133,6 +137,7 @@
       let controller = AVPictureInPictureController(contentSource: contentSource)
       controller.delegate = self
       controller.canStartPictureInPictureAutomaticallyFromInline = autoEnter
+      controller.requiresLinearPlayback = cachedRequiresLinearPlayback
       self.pipController = controller
     }
 
@@ -182,6 +187,14 @@
     func setAutoEnter(_ enabled: Bool) {
       cachedAutoEnter = enabled
       pipController?.canStartPictureInPictureAutomaticallyFromInline = enabled
+    }
+
+    /// Hides AVKit's scrubber + 15s skip buttons in the PiP overlay when
+    /// `true`. Used to gate seeking for non-entitled users so they can't
+    /// bypass the in-app paywall via the PiP UI.
+    func setRequiresLinearPlayback(_ required: Bool) {
+      cachedRequiresLinearPlayback = required
+      pipController?.requiresLinearPlayback = required
     }
 
     private func teardown() {

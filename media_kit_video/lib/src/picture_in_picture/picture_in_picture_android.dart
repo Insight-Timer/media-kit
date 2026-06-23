@@ -93,6 +93,11 @@ class PictureInPictureAndroid implements PictureInPictureController {
   }
 
   @override
+  Future<void> setRequiresLinearPlayback({required bool required}) async {
+    // No-op on Android — system PiP doesn't expose seek controls to gate.
+  }
+
+  @override
   Future<void> setMetadata({
     Duration? duration,
     Duration? position,
