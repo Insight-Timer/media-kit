@@ -26,7 +26,9 @@ class PictureInPictureAndroid implements PictureInPictureController {
   static const EventChannel _events =
       EventChannel('com.alexmercerind/media_kit_video/pip/events');
 
-  // See picture_in_picture_ios.dart for why this must be static.
+  // Static: each `receiveBroadcastStream` replaces the channel's
+  // binaryMessenger handler and re-runs the plugin's onListen, severing
+  // the prior subscriber. One shared stream, many Dart listeners.
   static Stream<PipEvent>? _eventStream;
 
   @override
