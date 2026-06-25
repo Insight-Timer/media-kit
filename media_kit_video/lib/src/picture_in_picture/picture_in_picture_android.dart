@@ -26,7 +26,8 @@ class PictureInPictureAndroid implements PictureInPictureController {
   static const EventChannel _events =
       EventChannel('com.alexmercerind/media_kit_video/pip/events');
 
-  Stream<PipEvent>? _eventStream;
+  // See picture_in_picture_ios.dart for why this must be static.
+  static Stream<PipEvent>? _eventStream;
 
   @override
   Future<bool> isSupported() async {

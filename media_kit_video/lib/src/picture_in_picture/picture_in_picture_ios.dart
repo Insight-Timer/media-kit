@@ -20,7 +20,15 @@ class PictureInPictureIOS implements PictureInPictureController {
   static const EventChannel _events =
       EventChannel('com.alexmercerind/media_kit_video/pip/events');
 
-  Stream<PipEvent>? _eventStream;
+  // Shared across all instances. EventChannel maps to a single
+  // FlutterEventSink on the native side, and `receiveBroadcastStream()`
+  // also installs a single binaryMessenger handler per channel name —
+  // each call replaces the previous. A per-instance stream therefore
+  // breaks any earlier subscriber the moment a second instance subscribes
+  // (matters in any setup that uses multiple VideoControllers, e.g. a
+  // playlist that pre-warms per-track players). Caching the broadcast
+  // stream statically routes one native subscription to all listeners.
+  static Stream<PipEvent>? _eventStream;
 
   @override
   Future<bool> isSupported() async {
