@@ -61,6 +61,10 @@ public class VideoOutputManager: NSObject {
     videoOutputs[handle]?.setOnFrameRendered(callback)
   }
 
+  public func copyCurrentPixelBuffer(handle: Int64) -> CVPixelBuffer? {
+    return videoOutputs[handle]?.copyCurrentPixelBuffer()
+  }
+
   public func videoOutput(forHandle handle: Int64) -> VideoOutput? {
     return videoOutputs[handle]
   }
