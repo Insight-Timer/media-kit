@@ -34,6 +34,10 @@ public class MediaKitVideoPlugin: NSObject, FlutterPlugin {
         registrar: registrar,
         outputManager: instance.videoOutputManager
       )
+      instance.rotationOverlayPlugin = MediaKitRotationOverlayPlugin(
+        registrar: registrar,
+        outputManager: instance.videoOutputManager
+      )
     #endif
   }
 
@@ -42,6 +46,7 @@ public class MediaKitVideoPlugin: NSObject, FlutterPlugin {
   private let utils: UtilsProtocol?
   #if canImport(Flutter)
     private var pipPlugin: MediaKitPictureInPicturePlugin?
+    private var rotationOverlayPlugin: MediaKitRotationOverlayPlugin?
   #endif
 
   init(
