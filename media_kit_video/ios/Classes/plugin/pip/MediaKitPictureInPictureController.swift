@@ -18,7 +18,7 @@
     private var displayLayer: AVSampleBufferDisplayLayer
     private var pipController: AVPictureInPictureController?
     // Cached so we can rebuild the AVPictureInPictureController
-    // after each session ends (the SBDL goes stale and the next auto-enter
+    // after each session ends (the display layer goes stale and the next auto-enter
     // renders a black window otherwise).
     private var cachedAutoEnter: Bool = false
     // Cached so a rebuilt AVPictureInPictureController carries the same
@@ -42,7 +42,7 @@
     private var contentDurationMs: Int64 = 0
     private var contentPositionMs: Int64 = 0
     // Deferred-rebuild flag. When PiP ends while the app is backgrounded,
-    // recreating the SBDL immediately produces a .failed layer (no GPU/Metal
+    // recreating the display layer immediately produces a .failed layer (no GPU/Metal
     // access in background). Instead, set this flag and rebuild on the next
     // appDidBecomeActive when the rendering pipeline is alive.
     private var pendingRebuild: Bool = false
@@ -115,11 +115,11 @@
 
     private func installDisplayLayer() {
       displayLayer.videoGravity = .resizeAspect
-      // Park the SBDL at 1×1 in the host's center. AVKit reads this layer's
+      // Park the display layer at 1×1 in the host's center. AVKit reads this layer's
       // frame as the PiP exit-animation target; the center makes the
       // animation collapse inward rather than zip off to the top-left
       // corner. Keeping the rect at 1×1 means AVKit doesn't decorate the
-      // layer with overlay sublayers (which it does when the SBDL is sized
+      // layer with overlay sublayers (which it does when the display layer is sized
       // to a "real" viewing rect — those overlays leak into the parent
       // layer's sublayer list and survive the PiP session, polluting it).
       let center = CGPoint(x: hostView.bounds.midX, y: hostView.bounds.midY)
@@ -144,7 +144,7 @@
     /// After a PiP session ends (user closes or restores), the
     /// AVSampleBufferDisplayLayer is left in a state where iOS's next auto-
     /// enter renders a black window while audio keeps playing. Recreate the
-    /// SBDL and AVPictureInPictureController so subsequent sessions render.
+    /// display layer and AVPictureInPictureController so subsequent sessions render.
     private func rebuildForNextSession() {
       guard let handle = handle else { return }
       outputManager.setOnFrameRendered(handle: handle, nil)
@@ -211,7 +211,7 @@
       let retained = pixelBuffer
       enqueueQueue.async { [weak self] in
         guard let self = self else { return }
-        // If the SBDL has entered .failed (e.g., created in background,
+        // If the display layer has entered .failed (e.g., created in background,
         // decoder error), flush() resets the rendering state so the next
         // sample can populate the layer cleanly.
         if self.displayLayer.status == .failed {
@@ -307,7 +307,7 @@
       }
       didRestoreInterface = false
 
-      // Rebuilding the SBDL in background produces a .failed layer (no GPU
+      // Rebuilding the display layer in background produces a .failed layer (no GPU
       // access). Defer to appDidBecomeActive when active; run inline only if
       // we're already active (restore path).
       if UIApplication.shared.applicationState == .active {

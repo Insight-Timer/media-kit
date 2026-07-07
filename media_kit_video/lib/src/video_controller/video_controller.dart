@@ -80,7 +80,7 @@ class VideoController {
   late final PictureInPictureController pictureInPicture =
       PictureInPictureController.platform();
 
-  /// Native SBDL overlay for hiding Flutter `Texture` skew during iOS
+  /// Native overlay for hiding Flutter `Texture` skew during iOS
   /// rotation animations. iOS 15+ only; no-op on other platforms.
   late final RotationOverlayController rotationOverlay =
       RotationOverlayController.platform();
