@@ -83,8 +83,8 @@ public class VideoOutput: NSObject {
   }
 
   /// Snapshot of the pixel buffer Flutter is currently displaying. Used
-  /// to seed an SBDL overlay so it isn't empty for the first ~16ms after
-  /// mount (avoids a black flash during rotation).
+  /// to seed the rotation overlay's display layer so it isn't empty for
+  /// the first ~16ms after mount (avoids a black flash during rotation).
   public func copyCurrentPixelBuffer() -> CVPixelBuffer? {
     return texture?.copyPixelBuffer()?.takeRetainedValue()
   }

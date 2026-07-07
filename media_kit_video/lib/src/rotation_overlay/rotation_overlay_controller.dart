@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:media_kit_video/src/rotation_overlay/rotation_overlay_ios.dart';
 import 'package:media_kit_video/src/rotation_overlay/rotation_overlay_noop.dart';
 
-/// Native SBDL overlay used to hide Flutter `Texture`-widget skew during
+/// Native overlay used to hide Flutter `Texture`-widget skew during
 /// iOS rotation animations. iOS animates the sibling native view via
 /// `transitionCoordinator` while Flutter re-layouts underneath.
 ///
@@ -18,7 +18,7 @@ abstract class RotationOverlayController {
   /// pumping libmpv frames into it. Idempotent: back-to-back `begin`
   /// calls replace the previous overlay.
   ///
-  /// [portraitBottomInset]: px inset applied to the SBDL's frame from the
+  /// [portraitBottomInset]: px inset applied to the video's frame from the
   /// bottom of the container when the container is in portrait. Matches
   /// the Flutter-side inset used to shift inline landscape video up from
   /// centre. Ignored when the container is landscape (fullscreen).

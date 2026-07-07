@@ -2,9 +2,9 @@
   import Flutter
   import UIKit
 
-  /// Flutter plugin exposing `begin`/`end` methods for a native SBDL overlay
+  /// Flutter plugin exposing `begin`/`end` methods for the native overlay
   /// used to cover Flutter's `Texture`-widget skew during iOS rotation
-  /// animations. See `MediaKitRotationOverlayController` for the SBDL host.
+  /// animations. See `MediaKitRotationOverlayController` for the overlay host.
   final class MediaKitRotationOverlayPlugin: NSObject {
     static let METHOD_CHANNEL = "com.alexmercerind/media_kit_video/rotation_overlay"
 

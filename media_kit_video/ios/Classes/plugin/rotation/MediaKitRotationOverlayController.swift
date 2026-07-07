@@ -6,16 +6,16 @@
 
   /// Container that holds an `AVSampleBufferDisplayLayer` sublayer. iOS
   /// calls `layoutSubviews` inside its rotation animation block, so the
-  /// SBDL's frame change participates in the `transitionCoordinator`
-  /// animation naturally.
+  /// display layer's frame change participates in the
+  /// `transitionCoordinator` animation naturally.
   @available(iOS 15.0, *)
   final class RotationSnapshotContainer: UIView {
     let displayLayer: AVSampleBufferDisplayLayer
     var portraitBottomInset: CGFloat = 0
-    /// Orientation the SBDL is currently posed for (portrait / landscape /
-    /// unknown at mount). Prevents deriving inset from intermediate bounds
-    /// during rotation animation, which would flip-flop as bounds cross
-    /// the square-ish midpoint.
+    /// Orientation the display layer is currently posed for (portrait /
+    /// landscape / unknown at mount). Prevents deriving inset from
+    /// intermediate bounds during rotation animation, which would
+    /// flip-flop as bounds cross the square-ish midpoint.
     private var currentPose: Pose = .unknown
     private enum Pose { case unknown, portrait, landscape }
 
@@ -81,9 +81,9 @@
       hostView.setNeedsLayout()
       hostView.layoutIfNeeded()
 
-      // Seed with the frame Flutter is currently showing — the SBDL is
-      // otherwise empty until mpv's next render tick, which iOS captures
-      // as a black flash in its rotation snapshot.
+      // Seed with the frame Flutter is currently showing — the display
+      // layer is otherwise empty until mpv's next render tick, which iOS
+      // captures as a black flash in its rotation snapshot.
       if let seed = outputManager.copyCurrentPixelBuffer(handle: handle) {
         enqueue(pixelBuffer: seed)
       }
