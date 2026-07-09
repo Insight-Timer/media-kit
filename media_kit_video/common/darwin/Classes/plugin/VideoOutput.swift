@@ -76,11 +76,36 @@ public class VideoOutput: NSObject {
     }
   }
 
-  public func setOnFrameRendered(_ callback: ((CVPixelBuffer) -> Void)?) {
+  /// Keyed fan-out: multiple consumers (PiP, rotation overlay) can receive
+  /// frames concurrently. A single shared slot let one consumer silently
+  /// clobber the other's callback. Pass nil to remove a consumer.
+  public func setOnFrameRendered(key: String, _ callback: ((CVPixelBuffer) -> Void)?) {
     worker.enqueue {
-      self.texture?.onFrameRendered = callback
+      self.frameCallbacksLock.lock()
+      if let callback = callback {
+        self.frameCallbacks[key] = callback
+      } else {
+        self.frameCallbacks.removeValue(forKey: key)
+      }
+      let isEmpty = self.frameCallbacks.isEmpty
+      self.frameCallbacksLock.unlock()
+
+      self.texture?.onFrameRendered = isEmpty
+        ? nil
+        : { [weak self] buffer in
+          guard let self = self else { return }
+          self.frameCallbacksLock.lock()
+          let callbacks = Array(self.frameCallbacks.values)
+          self.frameCallbacksLock.unlock()
+          for callback in callbacks {
+            callback(buffer)
+          }
+        }
     }
   }
+
+  private var frameCallbacks = [String: (CVPixelBuffer) -> Void]()
+  private let frameCallbacksLock = NSLock()
 
   /// Snapshot of the pixel buffer Flutter is currently displaying. Used
   /// to seed the rotation overlay's display layer so it isn't empty for

@@ -56,9 +56,10 @@ public class VideoOutputManager: NSObject {
 
   public func setOnFrameRendered(
     handle: Int64,
+    key: String,
     _ callback: ((CVPixelBuffer) -> Void)?
   ) {
-    videoOutputs[handle]?.setOnFrameRendered(callback)
+    videoOutputs[handle]?.setOnFrameRendered(key: key, callback)
   }
 
   public func copyCurrentPixelBuffer(handle: Int64) -> CVPixelBuffer? {
