@@ -103,7 +103,7 @@
 
       buildPipController(autoEnter: autoEnter)
 
-      outputManager.setOnFrameRendered(handle: handle) { [weak self] pixelBuffer in
+      outputManager.setOnFrameRendered(handle: handle, key: "pip") { [weak self] pixelBuffer in
         self?.enqueue(pixelBuffer: pixelBuffer)
       }
 
@@ -147,7 +147,7 @@
     /// display layer and AVPictureInPictureController so subsequent sessions render.
     private func rebuildForNextSession() {
       guard let handle = handle else { return }
-      outputManager.setOnFrameRendered(handle: handle, nil)
+      outputManager.setOnFrameRendered(handle: handle, key: "pip", nil)
 
       displayLayer.flushAndRemoveImage()
       displayLayer.removeFromSuperlayer()
@@ -155,7 +155,7 @@
       installDisplayLayer()
       buildPipController(autoEnter: cachedAutoEnter)
 
-      outputManager.setOnFrameRendered(handle: handle) { [weak self] pixelBuffer in
+      outputManager.setOnFrameRendered(handle: handle, key: "pip") { [weak self] pixelBuffer in
         self?.enqueue(pixelBuffer: pixelBuffer)
       }
     }
@@ -199,7 +199,7 @@
 
     private func teardown() {
       if let handle = handle {
-        outputManager.setOnFrameRendered(handle: handle, nil)
+        outputManager.setOnFrameRendered(handle: handle, key: "pip", nil)
         self.handle = nil
       }
       pipController = nil

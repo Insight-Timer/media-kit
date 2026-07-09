@@ -88,13 +88,13 @@
         enqueue(pixelBuffer: seed)
       }
 
-      outputManager.setOnFrameRendered(handle: handle) { [weak self] pixelBuffer in
+      outputManager.setOnFrameRendered(handle: handle, key: "rotationOverlay") { [weak self] pixelBuffer in
         self?.enqueue(pixelBuffer: pixelBuffer)
       }
     }
 
     func teardown() {
-      outputManager.setOnFrameRendered(handle: handle, nil)
+      outputManager.setOnFrameRendered(handle: handle, key: "rotationOverlay", nil)
       container.displayLayer.flushAndRemoveImage()
       container.removeFromSuperview()
     }
