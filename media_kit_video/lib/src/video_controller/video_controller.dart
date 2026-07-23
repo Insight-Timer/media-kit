@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'package:media_kit_video/src/airplay/airplay_controller.dart';
 import 'package:media_kit_video/src/picture_in_picture/picture_in_picture_controller.dart';
 import 'package:media_kit_video/src/rotation_overlay/rotation_overlay_controller.dart';
 import 'package:media_kit_video/src/video_controller/platform_video_controller.dart';
@@ -84,6 +85,11 @@ class VideoController {
   /// rotation animations. iOS 15+ only; no-op on other platforms.
   late final RotationOverlayController rotationOverlay =
       RotationOverlayController.platform();
+
+  /// AirPlay video handoff. libmpv can't route video to an AirPlay receiver, so
+  /// this plays the current stream on a native `AVPlayer` side-car while a route
+  /// is active. iOS-only; no-op on other platforms.
+  late final AirPlayController airPlay = AirPlayController.platform(player);
 
   /// {@macro video_controller}
   VideoController(
