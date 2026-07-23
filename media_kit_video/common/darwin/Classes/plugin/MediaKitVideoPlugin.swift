@@ -38,6 +38,7 @@ public class MediaKitVideoPlugin: NSObject, FlutterPlugin {
         registrar: registrar,
         outputManager: instance.videoOutputManager
       )
+      instance.airPlayPlugin = MediaKitAirPlayPlugin(registrar: registrar)
     #endif
   }
 
@@ -47,6 +48,7 @@ public class MediaKitVideoPlugin: NSObject, FlutterPlugin {
   #if canImport(Flutter)
     private var pipPlugin: MediaKitPictureInPicturePlugin?
     private var rotationOverlayPlugin: MediaKitRotationOverlayPlugin?
+    private var airPlayPlugin: MediaKitAirPlayPlugin?
   #endif
 
   init(

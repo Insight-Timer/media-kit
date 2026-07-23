@@ -13,6 +13,9 @@ export 'package:media_kit_video/src/picture_in_picture/pip_config.dart';
 export 'package:media_kit_video/src/picture_in_picture/pip_event.dart';
 export 'package:media_kit_video/src/picture_in_picture/picture_in_picture_controller.dart';
 
+export 'package:media_kit_video/src/airplay/airplay_controller.dart';
+export 'package:media_kit_video/src/airplay/airplay_event.dart';
+
 export 'package:media_kit_video/src/subtitle/subtitle_view.dart';
 
 export 'package:media_kit_video/media_kit_video_controls/media_kit_video_controls.dart';
