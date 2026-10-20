@@ -109,6 +109,7 @@ class NativePlayer extends PlatformPlayer {
       disposed = true;
 
       await super.dispose();
+      await _playbackRestartController.close();
 
       Initializer(mpv).dispose(ctx);
 
@@ -1474,6 +1475,11 @@ class NativePlayer extends PlatformPlayer {
       'event:${event.ref.event_id} ${event.ref.data.cast<Uint8>()}',
     );
 
+    if (event.ref.event_id == generated.mpv_event_id.MPV_EVENT_PLAYBACK_RESTART) {
+      if (!_playbackRestartController.isClosed) {
+        _playbackRestartController.add(null);
+      }
+    }
     if (event.ref.event_id == generated.mpv_event_id.MPV_EVENT_START_FILE) {
       if (isPlayingStateChangeAllowed) {
         state = state.copyWith(
@@ -2676,6 +2682,10 @@ class NativePlayer extends PlatformPlayer {
 
   /// Whether the [Player] has been disposed. This is used to prevent accessing dangling [ctx] after [dispose].
   bool disposed = false;
+
+  /// mpv's `playback-restart`: the first frame after a load or seek has gone to the video output.
+  Stream<void> get playbackRestart => _playbackRestartController.stream;
+  final StreamController<void> _playbackRestartController = StreamController<void>.broadcast();
 
   /// A flag to keep track of [setShuffle] calls.
   bool isShuffleEnabled = false;
