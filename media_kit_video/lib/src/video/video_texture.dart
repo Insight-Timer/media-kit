@@ -173,8 +173,10 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
   bool _pauseDueToPauseUponEnteringBackgroundMode = false;
 
   StreamSubscription<PipEvent>? _pipEventSubscription;
+  bool _pipSetUp = false;
   bool _pipAttached = false;
   bool _pipAttachInFlight = false;
+  PipConfig? _attachedPipConfig;
   // Public API:
   bool isFullscreen() {
     return media_kit_video_controls.isFullscreen(_contextNotifier.value!);
@@ -297,6 +299,10 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         videoViewParametersNotifier.value = newParams;
       });
     }
+
+    if (widget.pip != oldWidget.pip) {
+      _syncPictureInPicture();
+    }
   }
 
   @override
@@ -372,17 +378,39 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
       );
     }
     if (widget.pip != null) {
-      _initPictureInPicture();
-      _subscriptions.add(
-        widget.controller.player.stream.width.listen((_) {
-          _maybeAttachPictureInPicture();
-        }),
-      );
-      _subscriptions.add(
-        widget.controller.player.stream.height.listen((_) {
-          _maybeAttachPictureInPicture();
-        }),
-      );
+      _setUpPictureInPicture();
+    }
+  }
+
+  void _setUpPictureInPicture() {
+    _pipSetUp = true;
+    _initPictureInPicture();
+    _subscriptions.add(
+      widget.controller.player.stream.width.listen((_) {
+        _maybeAttachPictureInPicture();
+      }),
+    );
+    _subscriptions.add(
+      widget.controller.player.stream.height.listen((_) {
+        _maybeAttachPictureInPicture();
+      }),
+    );
+  }
+
+  /// Follows a [Video.pip] change by attaching with the new config. The old
+  /// session isn't stopped here: the native session is shared, so a stop on a
+  /// late rebuild could end another view's. Whoever changed [Video.pip] stops
+  /// it, and [PictureInPictureController.start] replaces it.
+  void _syncPictureInPicture() {
+    // Re-synced once the in-flight attach lands.
+    if (_pipAttachInFlight) return;
+    _pipAttached = false;
+    _attachedPipConfig = null;
+    if (widget.pip == null) return;
+    if (_pipSetUp) {
+      _maybeAttachPictureInPicture();
+    } else {
+      _setUpPictureInPicture();
     }
   }
 
@@ -464,6 +492,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         startImmediately: config.startImmediately,
       );
       _pipAttached = true;
+      _attachedPipConfig = config;
       // Seed the platform delegate with the current player
       // state. media_kit's streams are forward-only, so if duration was
       // already known before _initPictureInPicture subscribed, the iOS
@@ -476,6 +505,17 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
       );
     } finally {
       _pipAttachInFlight = false;
+    }
+    if (!_pipAttached || (mounted && widget.pip == _attachedPipConfig)) {
+      return;
+    }
+    // Disposed or reconfigured mid-attach: the session that just started is
+    // this view's, so stop it before following the change.
+    await widget.controller.pictureInPicture.stop();
+    if (mounted) {
+      _syncPictureInPicture();
+    } else {
+      _pipAttached = false;
     }
   }
 

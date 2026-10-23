@@ -72,7 +72,22 @@ class AndroidVideoController extends PlatformVideoController {
       // without jumping the user to the start of the media.
       final currentPosition = player.state.position;
       await player.seek(currentPosition);
+      // The seek's reply is ordered before its restart, so the next one is a frame on this surface.
+      _isFirstFrameArmed = widValue != '0' && _hasVideoParams;
     });
+  }
+
+  /// The video's own size is known, so the surface has been (or is being) sized to it.
+  bool _hasVideoParams = false;
+
+  /// Set once mpv draws into a surface sized to the video; the next playback restart is a frame there.
+  bool _isFirstFrameArmed = false;
+
+  StreamSubscription<void>? playbackRestartSubscription;
+
+  void _onPlaybackRestart() {
+    if (!_isFirstFrameArmed || waitUntilFirstFrameRenderedCompleter.isCompleted) return;
+    waitUntilFirstFrameRenderedCompleter.complete();
   }
 
   /// [StreamSubscription] for listening to video [Rect].
@@ -84,6 +99,7 @@ class AndroidVideoController extends PlatformVideoController {
     super.configuration,
   ) {
     wid.addListener(widListener);
+    playbackRestartSubscription = platform.playbackRestart.listen((_) => _onPlaybackRestart());
     videoParamsSubscription = player.stream.videoParams.listen(
       (event) => lock.synchronized(() async {
         final int width;
@@ -100,7 +116,13 @@ class AndroidVideoController extends PlatformVideoController {
         final isZero = width == 0 || height == 0;
         final isSame = width == rect.value?.width.toInt() &&
             height == rect.value?.height.toInt();
-        if (isZero || isSame) {
+        if (isZero) {
+          return;
+        }
+        if (isSame) {
+          // No new surface is coming, so the next restart already lands on this one.
+          _hasVideoParams = true;
+          _isFirstFrameArmed = true;
           return;
         }
 
@@ -121,10 +143,8 @@ class AndroidVideoController extends PlatformVideoController {
           width.toDouble(),
           height.toDouble(),
         );
-
-        if (!waitUntilFirstFrameRenderedCompleter.isCompleted) {
-          waitUntilFirstFrameRenderedCompleter.complete();
-        }
+        // Sized from the decoder's output, before any frame reaches the surface: the frame waits on the restart.
+        _hasVideoParams = true;
       }),
     );
   }
@@ -233,6 +253,7 @@ class AndroidVideoController extends PlatformVideoController {
     wid.dispose();
     wid.removeListener(widListener);
     await videoParamsSubscription?.cancel();
+    await playbackRestartSubscription?.cancel();
     final handle = await player.handle;
     _controllers.remove(handle);
     await _channel.invokeMethod(
