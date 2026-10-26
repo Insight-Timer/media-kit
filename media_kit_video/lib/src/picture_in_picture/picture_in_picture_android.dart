@@ -84,6 +84,12 @@ class PictureInPictureAndroid implements PictureInPictureController {
   }
 
   @override
+  Future<bool> retarget({required int handle}) async => false;
+
+  @override
+  bool shows(int handle) => true;
+
+  @override
   Future<void> setAutoEnter({required bool enabled}) async {
     try {
       await _method.invokeMethod<void>(

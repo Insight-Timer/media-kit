@@ -419,49 +419,11 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
     if (!await pipController.isSupported()) {
       return;
     }
-    final player = widget.controller.player;
-    _pipEventSubscription = pipController.events.listen((event) {
-      widget.onPipEvent?.call(event);
-      if (event is PipSetPlaying) {
-        if (event.playing) {
-          player.play();
-        } else {
-          player.pause();
-        }
-      } else if (event is PipSkipBy) {
-        // Wire FF/RW from the PiP UI to player.seek so the
-        // skip controls aren't no-ops. Clamp to [0, duration] so iOS
-        // doesn't get a negative position back via setMetadata.
-        final cur = player.state.position;
-        final dur = player.state.duration;
-        final target = cur + Duration(milliseconds: (event.seconds * 1000).round());
-        final clamped = target < Duration.zero
-            ? Duration.zero
-            : (dur > Duration.zero && target > dur ? dur : target);
-        player.seek(clamped);
-      } else if (event is PipClosed) {
-        player.pause();
-      }
-    });
-    // Push duration/position/playing so the iOS PiP delegate
-    // can return a real CMTimeRange (pause button + functional progress
-    // bar + enabled skip controls). Without these calls the system falls
-    // back to live-stream UI (stop button, ±∞ range, "LIVE" overlay).
-    _subscriptions.add(
-      player.stream.duration.listen((d) {
-        pipController.setMetadata(duration: d);
-      }),
+    _pipEventSubscription = pipController.events.listen(
+      (event) => widget.onPipEvent?.call(event),
     );
-    _subscriptions.add(
-      player.stream.position.listen((p) {
-        pipController.setMetadata(position: p);
-      }),
-    );
-    _subscriptions.add(
-      player.stream.playing.listen((p) {
-        pipController.setMetadata(isPlaying: p);
-      }),
-    );
+    // Controls and progress follow the player shown; its controller owns them.
+    await widget.controller.wirePictureInPicture();
     _maybeAttachPictureInPicture();
   }
 
@@ -493,16 +455,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
       );
       _pipAttached = true;
       _attachedPipConfig = config;
-      // Seed the platform delegate with the current player
-      // state. media_kit's streams are forward-only, so if duration was
-      // already known before _initPictureInPicture subscribed, the iOS
-      // controller would never learn it and stay stuck in live-stream
-      // mode (±∞ range, "LIVE" overlay, stop button).
-      await pipController.setMetadata(
-        duration: player.state.duration,
-        position: player.state.position,
-        isPlaying: player.state.playing,
-      );
+      await widget.controller.seedPictureInPicture();
     } finally {
       _pipAttachInFlight = false;
     }
