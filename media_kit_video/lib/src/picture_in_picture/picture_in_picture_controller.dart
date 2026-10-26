@@ -62,6 +62,17 @@ abstract class PictureInPictureController {
   /// resources.
   Future<void> stop();
 
+  /// Moves an active session onto [handle]'s frames, keeping the window open.
+  ///
+  /// iOS only: a backgrounded app can't start a new session, but can keep
+  /// showing one. Resolves to `false` when no session is active.
+  Future<bool> retarget({required int handle});
+
+  /// Whether the session shows [handle]'s player, so its controls and
+  /// progress belong to that player. Android doesn't track it and reports
+  /// `true` for every player.
+  bool shows(int handle);
+
   /// Enables or disables the "enter on backgrounding" behavior while a
   /// session is attached.
   Future<void> setAutoEnter({required bool enabled});

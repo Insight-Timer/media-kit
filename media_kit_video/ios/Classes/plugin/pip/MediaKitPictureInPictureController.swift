@@ -182,6 +182,20 @@
       }
     }
 
+    /// Feeds the open window from another player, so a backgrounded app keeps PiP across a track change.
+    func retarget(handle newHandle: Int64) -> Bool {
+      guard isActive else { return false }
+      if let oldHandle = handle {
+        outputManager.setOnFrameRendered(handle: oldHandle, key: "pip", nil)
+      }
+      handle = newHandle
+      // The outgoing frame stays up until the new player renders, rather than a black window.
+      outputManager.setOnFrameRendered(handle: newHandle, key: "pip") { [weak self] pixelBuffer in
+        self?.enqueue(pixelBuffer: pixelBuffer)
+      }
+      return true
+    }
+
     func stop() {
       if let controller = pipController, controller.isPictureInPictureActive {
         DispatchQueue.main.async { controller.stopPictureInPicture() }

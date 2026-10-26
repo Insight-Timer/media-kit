@@ -31,6 +31,12 @@ class PictureInPictureNoop implements PictureInPictureController {
   Future<void> stop() async {}
 
   @override
+  Future<bool> retarget({required int handle}) async => false;
+
+  @override
+  bool shows(int handle) => false;
+
+  @override
   Future<void> setAutoEnter({required bool enabled}) async {}
 
   @override

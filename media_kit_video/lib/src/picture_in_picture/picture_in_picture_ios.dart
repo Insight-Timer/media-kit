@@ -25,6 +25,10 @@ class PictureInPictureIOS implements PictureInPictureController {
   // the prior subscriber. One shared stream, many Dart listeners.
   static Stream<PipEvent>? _eventStream;
 
+  // Static like the session itself; kept after stop so the closing events
+  // still reach their player.
+  static int? _shownHandle;
+
   @override
   Future<bool> isSupported() async {
     try {
@@ -56,6 +60,7 @@ class PictureInPictureIOS implements PictureInPictureController {
     bool autoEnter = true,
     bool startImmediately = false,
   }) async {
+    _shownHandle = handle;
     try {
       await _method.invokeMethod<void>('start', <String, dynamic>{
         'handle': handle,
@@ -77,6 +82,26 @@ class PictureInPictureIOS implements PictureInPictureController {
       // no-op
     }
   }
+
+  @override
+  Future<bool> retarget({required int handle}) async {
+    try {
+      final moved = await _method.invokeMethod<bool>(
+            'retarget',
+            <String, dynamic>{'handle': handle},
+          ) ??
+          false;
+      if (moved) _shownHandle = handle;
+      return moved;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  @override
+  bool shows(int handle) => _shownHandle == handle;
 
   @override
   Future<void> setAutoEnter({required bool enabled}) async {

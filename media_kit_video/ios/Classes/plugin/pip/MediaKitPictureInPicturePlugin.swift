@@ -65,6 +65,15 @@
         }
       case "start":
         handleStart(call.arguments, result: result)
+      case "retarget":
+        guard #available(iOS 15.0, *),
+          let controller = controllerBox as? MediaKitPictureInPictureController,
+          let handle = Self.readHandle((call.arguments as? [String: Any])?["handle"])
+        else {
+          result(false)
+          return
+        }
+        result(controller.retarget(handle: handle))
       case "stop":
         if #available(iOS 15.0, *),
           let controller = controllerBox as? MediaKitPictureInPictureController

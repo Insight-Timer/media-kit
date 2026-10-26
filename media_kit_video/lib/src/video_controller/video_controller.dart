@@ -9,6 +9,7 @@ import 'package:media_kit/media_kit.dart';
 
 import 'package:media_kit_video/src/airplay/airplay_controller.dart';
 import 'package:media_kit_video/src/picture_in_picture/picture_in_picture_controller.dart';
+import 'package:media_kit_video/src/picture_in_picture/pip_event.dart';
 import 'package:media_kit_video/src/rotation_overlay/rotation_overlay_controller.dart';
 import 'package:media_kit_video/src/video_controller/platform_video_controller.dart';
 
@@ -183,5 +184,96 @@ class VideoController {
   Future<void> get waitUntilFirstFrameRendered async {
     final instance = await platform.future;
     return instance.waitUntilFirstFrameRendered;
+  }
+
+  int? _pictureInPictureHandle;
+  Future<void>? _pictureInPictureWiring;
+
+  bool get _isShownInPictureInPicture {
+    final int? handle = _pictureInPictureHandle;
+    return handle != null && pictureInPicture.shows(handle);
+  }
+
+  /// Drives the shared Picture-in-Picture window's controls and progress from
+  /// [player] whenever it is the player shown, with or without a [Video].
+  Future<void> wirePictureInPicture() =>
+      _pictureInPictureWiring ??= _wirePictureInPicture();
+
+  Future<void> _wirePictureInPicture() async {
+    _pictureInPictureHandle = await player.handle;
+    final List<StreamSubscription> subscriptions = <StreamSubscription>[
+      pictureInPicture.events.listen(_onPictureInPictureEvent),
+      // Push duration/position/playing so the iOS PiP delegate can return a
+      // real CMTimeRange (pause button + functional progress bar + enabled
+      // skip controls). Without these calls the system falls back to
+      // live-stream UI (stop button, ±∞ range, "LIVE" overlay).
+      player.stream.duration.listen((Duration duration) {
+        if (_isShownInPictureInPicture) {
+          pictureInPicture.setMetadata(duration: duration);
+        }
+      }),
+      player.stream.position.listen((Duration position) {
+        if (_isShownInPictureInPicture) {
+          pictureInPicture.setMetadata(position: position);
+        }
+      }),
+      player.stream.playing.listen((bool playing) {
+        if (_isShownInPictureInPicture) {
+          pictureInPicture.setMetadata(isPlaying: playing);
+        }
+      }),
+    ];
+    player.platform?.release.add(() async {
+      for (final StreamSubscription subscription in subscriptions) {
+        await subscription.cancel();
+      }
+    });
+  }
+
+  /// Seeds the window with [player]'s state: media_kit's streams are
+  /// forward-only, so state reported before the session attached would
+  /// otherwise leave it in live-stream mode.
+  Future<void> seedPictureInPicture() => pictureInPicture.setMetadata(
+        duration: player.state.duration,
+        position: player.state.position,
+        isPlaying: player.state.playing,
+      );
+
+  /// Moves an open Picture-in-Picture window onto this player, so it carries
+  /// on with the next video instead of closing. Resolves to `false` when no
+  /// window is open or the platform can't move it.
+  Future<bool> retargetPictureInPicture() async {
+    await wirePictureInPicture();
+    final int? handle = _pictureInPictureHandle;
+    if (handle == null || !await pictureInPicture.retarget(handle: handle)) {
+      return false;
+    }
+    await seedPictureInPicture();
+    return true;
+  }
+
+  void _onPictureInPictureEvent(PipEvent event) {
+    if (!_isShownInPictureInPicture) return;
+    if (event is PipSetPlaying) {
+      if (event.playing) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    } else if (event is PipSkipBy) {
+      // Wire FF/RW from the PiP UI to player.seek so the skip controls aren't
+      // no-ops. Clamp to [0, duration] so iOS doesn't get a negative position
+      // back via setMetadata.
+      final Duration current = player.state.position;
+      final Duration duration = player.state.duration;
+      final Duration target =
+          current + Duration(milliseconds: (event.seconds * 1000).round());
+      final Duration clamped = target < Duration.zero
+          ? Duration.zero
+          : (duration > Duration.zero && target > duration ? duration : target);
+      player.seek(clamped);
+    } else if (event is PipClosed) {
+      player.pause();
+    }
   }
 }
