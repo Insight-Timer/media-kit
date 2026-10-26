@@ -32,11 +32,15 @@ abstract class AirPlayController {
   /// Hands the current playback off to the AVPlayer side-car: reads the current
   /// media URL + position from the [Player], pauses libmpv, and starts external
   /// playback (preserving the paused/playing state). No-op if nothing is loaded.
-  Future<void> startHandoff();
+  ///
+  /// [url] casts that instead of the [Player]'s media, for a player holding a
+  /// local copy (e.g. a rewritten HLS playlist) a receiver can't reach.
+  Future<void> startHandoff({String? url});
 
-  /// Ends the handoff: tears down the side-car, seeks libmpv back to the position
-  /// the receiver reached, and restores its prior play/pause state.
-  Future<void> stopHandoff();
+  /// Ends the handoff: tears down the side-car and seeks libmpv back to the
+  /// position the receiver reached. libmpv then plays if [resumePlaying], which
+  /// defaults to its state when the handoff started.
+  Future<void> stopHandoff({bool? resumePlaying});
 
   Future<void> play();
 
