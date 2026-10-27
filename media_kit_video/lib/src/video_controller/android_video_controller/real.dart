@@ -68,10 +68,9 @@ class AndroidVideoController extends PlatformVideoController {
           if (configuration.vo == 'mediacodec_embed') 'vid': vidValue,
         },
       );
-      // Instead of seeking to the start (Duration.zero), seek to the current playback position
-      // without jumping the user to the start of the media.
-      final currentPosition = player.state.position;
-      await player.seek(currentPosition);
+      // Relative, so it folds into a seek still queued instead of undoing it
+      // with the last reported position.
+      await platform.command(['seek', '0', 'relative+exact']);
       _isResizePending = false;
       // The seek's reply is ordered before its restart, so the next one is a
       // frame on this surface.
