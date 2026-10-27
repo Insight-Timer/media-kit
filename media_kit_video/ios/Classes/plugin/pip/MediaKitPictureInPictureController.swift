@@ -184,7 +184,8 @@
 
     /// Feeds the open window from another player, so a backgrounded app keeps PiP across a track change.
     func retarget(handle newHandle: Int64) -> Bool {
-      guard isActive else { return false }
+      // A player whose output isn't built yet has no frames to give the window.
+      guard isActive, outputManager.videoOutput(forHandle: newHandle) != nil else { return false }
       if let oldHandle = handle {
         outputManager.setOnFrameRendered(handle: oldHandle, key: "pip", nil)
       }

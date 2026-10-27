@@ -45,8 +45,8 @@ class AirPlayIOS implements AirPlayController {
   }
 
   @override
-  Future<void> startHandoff() async {
-    final url = _currentMediaUri;
+  Future<void> startHandoff({String? url}) async {
+    url ??= _currentMediaUri;
     if (url == null) return;
     final positionMs = _player.state.position.inMilliseconds;
     _wasPlayingBeforeHandoff = _player.state.playing;
@@ -65,7 +65,7 @@ class AirPlayIOS implements AirPlayController {
   }
 
   @override
-  Future<void> stopHandoff() async {
+  Future<void> stopHandoff({bool? resumePlaying}) async {
     int positionMs = 0;
     try {
       positionMs = await _method.invokeMethod<int>('stop') ?? 0;
@@ -76,7 +76,7 @@ class AirPlayIOS implements AirPlayController {
     }
     // Resume the on-device decoder exactly where the receiver left off.
     await _player.seek(Duration(milliseconds: positionMs));
-    if (_wasPlayingBeforeHandoff) {
+    if (resumePlaying ?? _wasPlayingBeforeHandoff) {
       await _player.play();
     }
   }

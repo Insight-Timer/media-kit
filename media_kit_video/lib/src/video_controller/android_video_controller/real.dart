@@ -68,26 +68,49 @@ class AndroidVideoController extends PlatformVideoController {
           if (configuration.vo == 'mediacodec_embed') 'vid': vidValue,
         },
       );
-      // Instead of seeking to the start (Duration.zero), seek to the current playback position
-      // without jumping the user to the start of the media.
-      final currentPosition = player.state.position;
-      await player.seek(currentPosition);
-      // The seek's reply is ordered before its restart, so the next one is a frame on this surface.
+      // Relative, so it folds into a seek still queued instead of undoing it
+      // with the last reported position.
+      await platform.command(['seek', '0', 'relative+exact']);
+      _isResizePending = false;
+      // The seek's reply is ordered before its restart, so the next one is a
+      // frame on this surface.
       _isFirstFrameArmed = widValue != '0' && _hasVideoParams;
+      if (_isFirstFrameArmed) {
+        // A stream mpv can't seek may never restart after the re-attach.
+        _firstFrameFallback?.cancel();
+        _firstFrameFallback = Timer(
+          const Duration(seconds: 1),
+          _completeFirstFrame,
+        );
+      }
     });
   }
 
-  /// The video's own size is known, so the surface has been (or is being) sized to it.
+  /// The video's own size is known, so the surface has been (or is being)
+  /// sized to it.
   bool _hasVideoParams = false;
 
-  /// Set once mpv draws into a surface sized to the video; the next playback restart is a frame there.
+  /// Set from a resize until its new surface is attached; a restart in
+  /// between is still on the old surface.
+  bool _isResizePending = false;
+
+  /// Set once mpv draws into a surface sized to the video; the next playback
+  /// restart is a frame there.
   bool _isFirstFrameArmed = false;
+
+  Timer? _firstFrameFallback;
 
   StreamSubscription<void>? playbackRestartSubscription;
 
   void _onPlaybackRestart() {
-    if (!_isFirstFrameArmed || waitUntilFirstFrameRenderedCompleter.isCompleted) return;
-    waitUntilFirstFrameRenderedCompleter.complete();
+    if (_isFirstFrameArmed) _completeFirstFrame();
+  }
+
+  void _completeFirstFrame() {
+    _firstFrameFallback?.cancel();
+    if (!waitUntilFirstFrameRenderedCompleter.isCompleted) {
+      waitUntilFirstFrameRenderedCompleter.complete();
+    }
   }
 
   /// [StreamSubscription] for listening to video [Rect].
@@ -99,7 +122,8 @@ class AndroidVideoController extends PlatformVideoController {
     super.configuration,
   ) {
     wid.addListener(widListener);
-    playbackRestartSubscription = platform.playbackRestart.listen((_) => _onPlaybackRestart());
+    playbackRestartSubscription =
+        platform.playbackRestart.listen((_) => _onPlaybackRestart());
     videoParamsSubscription = player.stream.videoParams.listen(
       (event) => lock.synchronized(() async {
         final int width;
@@ -120,12 +144,16 @@ class AndroidVideoController extends PlatformVideoController {
           return;
         }
         if (isSame) {
-          // No new surface is coming, so the next restart already lands on this one.
+          // No new surface is coming, so once one is attached the next
+          // restart lands on it.
           _hasVideoParams = true;
-          _isFirstFrameArmed = true;
+          if (!_isResizePending && (wid.value ?? 0) != 0) {
+            _isFirstFrameArmed = true;
+          }
           return;
         }
 
+        _isResizePending = true;
         final handle = await player.handle;
 
         await _channel.invokeMethod(
@@ -143,7 +171,8 @@ class AndroidVideoController extends PlatformVideoController {
           width.toDouble(),
           height.toDouble(),
         );
-        // Sized from the decoder's output, before any frame reaches the surface: the frame waits on the restart.
+        // Sized from the decoder's output, before any frame reaches the
+        // surface: the frame waits on the restart.
         _hasVideoParams = true;
       }),
     );
@@ -254,6 +283,8 @@ class AndroidVideoController extends PlatformVideoController {
     wid.removeListener(widListener);
     await videoParamsSubscription?.cancel();
     await playbackRestartSubscription?.cancel();
+    // Nothing will draw now; release anyone still waiting on a first frame.
+    _completeFirstFrame();
     final handle = await player.handle;
     _controllers.remove(handle);
     await _channel.invokeMethod(

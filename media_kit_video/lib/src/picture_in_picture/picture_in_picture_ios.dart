@@ -60,7 +60,6 @@ class PictureInPictureIOS implements PictureInPictureController {
     bool autoEnter = true,
     bool startImmediately = false,
   }) async {
-    _shownHandle = handle;
     try {
       await _method.invokeMethod<void>('start', <String, dynamic>{
         'handle': handle,
@@ -69,6 +68,7 @@ class PictureInPictureIOS implements PictureInPictureController {
         'autoEnter': autoEnter,
         'startImmediately': startImmediately,
       });
+      _shownHandle = handle;
     } on MissingPluginException {
       // iOS version does not support PiP; silently no-op.
     }

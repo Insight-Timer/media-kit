@@ -200,7 +200,14 @@ class VideoController {
       _pictureInPictureWiring ??= _wirePictureInPicture();
 
   Future<void> _wirePictureInPicture() async {
-    _pictureInPictureHandle = await player.handle;
+    final int handle = await player.handle;
+    final PlatformPlayer? platformPlayer = player.platform;
+    // Disposed meanwhile: its release hooks have run and wouldn't cancel these.
+    if (platformPlayer == null ||
+        (platformPlayer is NativePlayer && platformPlayer.disposed)) {
+      return;
+    }
+    _pictureInPictureHandle = handle;
     final List<StreamSubscription> subscriptions = <StreamSubscription>[
       pictureInPicture.events.listen(_onPictureInPictureEvent),
       // Push duration/position/playing so the iOS PiP delegate can return a

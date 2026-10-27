@@ -126,6 +126,9 @@ class Video extends StatefulWidget {
   /// [PipConfig.autoEnter] is `true`, note that
   /// [pauseUponEnteringBackgroundMode] should be `false` — otherwise the
   /// player pauses before the Picture-in-Picture window starts.
+  ///
+  /// Setting it to `null` stops attaching but leaves an open window running;
+  /// stop it through [VideoController.pictureInPicture].
   final PipConfig? pip;
 
   /// Optional callback invoked for every Picture-in-Picture lifecycle or
@@ -177,6 +180,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
   bool _pipAttached = false;
   bool _pipAttachInFlight = false;
   PipConfig? _attachedPipConfig;
+  int? _attachedPipHandle;
   // Public API:
   bool isFullscreen() {
     return media_kit_video_controls.isFullscreen(_contextNotifier.value!);
@@ -397,6 +401,11 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
     );
   }
 
+  bool get _showsAttachedPlayer {
+    final handle = _attachedPipHandle;
+    return handle != null && widget.controller.pictureInPicture.shows(handle);
+  }
+
   /// Follows a [Video.pip] change by attaching with the new config. The old
   /// session isn't stopped here: the native session is shared, so a stop on a
   /// late rebuild could end another view's. Whoever changed [Video.pip] stops
@@ -404,6 +413,20 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
   void _syncPictureInPicture() {
     // Re-synced once the in-flight attach lands.
     if (_pipAttachInFlight) return;
+    final attached = _attachedPipConfig;
+    final config = widget.pip;
+    // Restarting would close an open window over what is only a flag change.
+    if (_pipAttached &&
+        attached != null &&
+        config != null &&
+        attached.startImmediately == config.startImmediately &&
+        attached.preferredSize == config.preferredSize) {
+      _attachedPipConfig = config;
+      widget.controller.pictureInPicture.setAutoEnter(
+        enabled: config.autoEnter,
+      );
+      return;
+    }
     _pipAttached = false;
     _attachedPipConfig = null;
     if (widget.pip == null) return;
@@ -455,6 +478,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
       );
       _pipAttached = true;
       _attachedPipConfig = config;
+      _attachedPipHandle = handle;
       await widget.controller.seedPictureInPicture();
     } finally {
       _pipAttachInFlight = false;
@@ -462,14 +486,14 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
     if (!_pipAttached || (mounted && widget.pip == _attachedPipConfig)) {
       return;
     }
-    // Disposed or reconfigured mid-attach: the session that just started is
-    // this view's, so stop it before following the change.
-    await widget.controller.pictureInPicture.stop();
-    if (mounted) {
-      _syncPictureInPicture();
-    } else {
-      _pipAttached = false;
+    // Disposed or reconfigured mid-attach: stop the session that just started,
+    // unless another view has since taken the shared window.
+    if (_showsAttachedPlayer) {
+      await widget.controller.pictureInPicture.stop();
     }
+    _pipAttached = false;
+    _attachedPipConfig = null;
+    if (mounted) _syncPictureInPicture();
   }
 
   @override
@@ -480,7 +504,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
       subscription.cancel();
     }
     _pipEventSubscription?.cancel();
-    if (_pipAttached) {
+    if (_pipAttached && _showsAttachedPlayer) {
       widget.controller.pictureInPicture.stop();
     }
     if (_disposeNotifiers) {

@@ -16,10 +16,10 @@ class AirPlayNoop implements AirPlayController {
   Future<bool> isSupported() async => false;
 
   @override
-  Future<void> startHandoff() async {}
+  Future<void> startHandoff({String? url}) async {}
 
   @override
-  Future<void> stopHandoff() async {}
+  Future<void> stopHandoff({bool? resumePlaying}) async {}
 
   @override
   Future<void> play() async {}
