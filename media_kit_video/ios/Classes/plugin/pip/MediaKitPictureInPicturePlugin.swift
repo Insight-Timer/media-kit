@@ -186,6 +186,14 @@
         return
       }
 
+      // An open window keeps its session; a new controller would end it without reporting the stop.
+      if let current = controllerBox as? MediaKitPictureInPictureController, current.isActive {
+        _ = current.retarget(handle: handle)
+        current.setAutoEnter(autoEnter)
+        result(nil)
+        return
+      }
+
       configureAudioSessionIfNeeded()
 
       (controllerBox as? MediaKitPictureInPictureController)?.stop()
