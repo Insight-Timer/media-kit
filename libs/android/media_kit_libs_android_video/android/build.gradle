@@ -58,10 +58,10 @@ task downloadDependencies(type: Exec) {
 
         // Download all *.jar dependencies & verify their MD5 checksums.
         def filesToDownload = [
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-arm64-v8a.jar", "md5": "bfc45eea9e4aae39b34eba9e7cd16444", "destination": file("$buildDir/v1.1.11-it.2/default-arm64-v8a.jar")],
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-armeabi-v7a.jar", "md5": "2d5bfc741d799883a45559ddcf4b7f40", "destination": file("$buildDir/v1.1.11-it.2/default-armeabi-v7a.jar")],
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-x86_64.jar", "md5": "363907ab454f52910480be1b611daffd", "destination": file("$buildDir/v1.1.11-it.2/default-x86_64.jar")],
-            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-x86.jar", "md5": "956ad801a5e00dcd521e66445472045a", "destination": file("$buildDir/v1.1.11-it.2/default-x86.jar")]
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-arm64-v8a.jar", "md5": "dfb0a5397ffcf49e05fe61582a6717ae", "destination": file("$buildDir/v1.1.11-it.2/default-arm64-v8a.jar")],
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-armeabi-v7a.jar", "md5": "271379fa24c92c3779c57698712dff67", "destination": file("$buildDir/v1.1.11-it.2/default-armeabi-v7a.jar")],
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-x86_64.jar", "md5": "ba327cd4c9b5b63e53c74783532bae14", "destination": file("$buildDir/v1.1.11-it.2/default-x86_64.jar")],
+            ["url": "https://github.com/Insight-Timer/libmpv-android-video-build/releases/download/v1.1.11-it.2/default-x86.jar", "md5": "181dcae21e5ea1f4cc0bb4a6e55c1ab5", "destination": file("$buildDir/v1.1.11-it.2/default-x86.jar")]
         ]
 
         filesToDownload.each { fileInfo ->
